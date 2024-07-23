@@ -503,10 +503,10 @@ export default function Admin() {
     }
 
     for (let i = 0; i <= 3; i++) {
-      doc.rect(10 + 48.75 * i, 17, 48.75, 7 * 6);
+        doc.rect(10 + 48.75 * i, 17, 48.75, 7 * 6);
     }
 
-
+    
 
     const texteducationData = "ประวัติการศึกษา";
     const texteducationDataWidth = doc.getTextWidth(texteducationData);
@@ -521,16 +521,16 @@ export default function Admin() {
       texteducationDataY - 1
     );
 
-    const textEducationData = [
+const textEducationData = [
       "วุฒิการศึกษา",
       "ชื่อสถานศึกษา",
       "ที่ตั้ง",
       "ระยะเวลาที่ศึกษา(พ.ศ.) ตั้งแต่เริ่ม จนจบ"
     ];
-
+  
     let y = 22; // Starting Y position for the text
     const xStart = 10; // Starting X position for the rectangles
-
+  
     textEducationData.forEach((text, index) => {
       const textWidth = doc.getTextWidth(text);
       const x = xStart + 48.75 * index + (48.75 - textWidth) / 2;
@@ -544,7 +544,7 @@ export default function Admin() {
       "ป.ตรี",
       "อื่นๆ",
     ];
-
+  
     textEducationData2.forEach((text, index) => {
       const textWidth = doc.getTextWidth(text);
       const x = xStart + (48.75 - textWidth) / 2; // Center text in the first column
@@ -552,29 +552,6 @@ export default function Admin() {
       doc.text(text, x, yPosition);
     });
 
-
-    const textWorkedData = "ประวัติการทำงาน";
-    const textWorkedDataWidth = doc.getTextWidth(textWorkedData);
-    const textWorkedDataX =
-      rectX + (rectWidth - textWorkedDataWidth) / 2;
-    const textWorkedDataY =
-      56 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
-
-    doc.text(
-      textWorkedData,
-      textWorkedDataX,
-      textWorkedDataY - 1
-    );
-
-    for (let i = 0; i <= 4; i++) {
-      if (i == 0) {
-        doc.setFillColor(255, 255, 0); // Yellow color
-
-        doc.rect(10, 56 + 7 * i, 195, 7, "FD");
-      } else {
-        doc.rect(10, 59 + 7 * i, 195, 7);
-      }
-    }
 
     doc.text(`หมายเหตุ: 1.ข้อมูลส่วนตัวของผู้สมัครทางบริษัทฯ ไม่ได้นำมาประกอบพิจารณฯาในการคัดเลือกผู้สมัครเพื่อรับเข้าทำงานแต่เป็นข้อมูลแนบประวัติพนักงานเท่านั้น`, 12, 273);
 

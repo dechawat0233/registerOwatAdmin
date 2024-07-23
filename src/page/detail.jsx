@@ -43,6 +43,11 @@ function PageOne({ allUsers, setAllUsers }) {
     haveChild: "มีบุตร",
   };
 
+  const marriageRegistrationMappings = {
+    registered: "มี",
+    notRegistered: "ไม่มี",
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -315,7 +320,7 @@ function PageOne({ allUsers, setAllUsers }) {
           </div>
         )}
 
-{user.addressForContact && (
+        {user.addressForContact && (
           <div style={{ margin: "2rem 0" }}>
             <p>
               <strong>ที่อยู่ปัจจุบันที่สามารถติดต่อได้</strong>
@@ -408,6 +413,8 @@ function PageOne({ allUsers, setAllUsers }) {
                   <p>สถานที่ทำงาน {user.spouseWorkplace}</p>
                   <p>โทรศัพท์มือถือ {user.spouseMobile}</p>
                   <p>โทรศัพท์ที่ติดต่อได้ {user.spousePhone}</p>
+                  <p>ทะเบียนสมรส {marriageRegistrationMappings[user.marriageRegistration] || user.marriageRegistration}
+                  </p>
                 </div>
                 <div
                   style={{
