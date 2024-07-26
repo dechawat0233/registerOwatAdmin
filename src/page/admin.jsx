@@ -125,6 +125,41 @@ export default function Admin() {
     }
   };
 
+  const [userStatuses, setUserStatuses] = useState({});
+
+  // Initialize the statuses when the component mounts or when allUser changes
+  useEffect(() => {
+    const initialStatuses = {};
+    allUser.forEach((user) => {
+      initialStatuses[user._id] = user.status;
+    });
+    setUserStatuses(initialStatuses);
+  }, [allUser]);
+  
+  const handleStatusChange = async (userId, newStatus) => {
+    try {
+      const response = await fetch(`http://localhost:3000/users/${userId}`, {
+        method: "PUT", // Assuming you use PUT to update user data
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setUserStatuses((prevStatuses) => ({
+          ...prevStatuses,
+          [userId]: newStatus,
+        }));
+      } else {
+        console.error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+
   const handleDetailClick = (userId) => {
     console.log("Navigating to user ID:", userId);
     navigate(`/detail/${userId}`);
@@ -137,17 +172,26 @@ export default function Admin() {
       if (response.ok) {
         const data = await response.json();
         setUser(data); // Set the fetched user data
+        return data; // Return the fetched user data
+
       } else {
         console.error("Failed to fetch user details");
+        return null;
       }
     } catch (error) {
       console.error("Error fetching user details:", error);
+      return null;
     }
   };
   console.log("user", user);
 
-  const generatePdf = (userId) => {
-    fetchUserData(userId);
+  const generatePdf = async (userId) => {
+    // fetchUserData(userId);
+    const user = await fetchUserData(userId);
+  if (!user) {
+    console.error("User data could not be fetched");
+    return;
+  }
     const doc = new jsPDF({ unit: "mm", format: "a4" });
 
     // Set the font and size
@@ -162,9 +206,9 @@ export default function Admin() {
     const OwatIcon = "/assets/images/OwatIcon.png";
     const OwatSupport = "/assets/images/supportIcon.png";
     doc.addImage(OwatIcon, "PNG", 10, 10, 60, 19);
-    // doc.addImage(OwatSupport, "PNG", 145, 20, 60, 12.6);
+    doc.addImage(OwatSupport, "PNG", 145, 20, 60, 12.6);
 
-    const imageUrl = `http://localhost:3000/${user.image}`;
+    const imageUrl = `http://localhost:3000/${user.image}` || "";
     doc.addImage(imageUrl, "JPEG", 175, 38, 20, 27);
     // รูปสมัครงาน
     doc.setLineWidth(0.5);
@@ -283,19 +327,21 @@ export default function Admin() {
       });
     }
 
-    doc.text(`ชื่อ: ${user.name} ผู้ที่แนะนำมาสมัคร`, 12, 84);
-    doc.text(`หน่วยงาน: ${user.agency}`, 90, 84);
+    doc.text(`ชื่อ: ${user.name || ""} ผู้ที่แนะนำมาสมัคร`, 12, 84);
+    doc.text(`หน่วยงาน: ${user.agency || ""}`, 90, 84);
 
-    doc.text(`เบอร์โทรศัพท์: ${user.phone}`, 12, 92);
+    doc.text(`เบอร์โทรศัพท์: ${user.phone || ""}`, 12, 92);
     doc.text(
-      `เลขที่หลังบัตรประชาชนผู้สมัคร: ${user.idNumber} (เพื่อใช้ยื่นแสดงรายได้ประจำปี)`,
+      `เลขที่หลังบัตรประชาชนผู้สมัคร: ${
+        user.idNumber || ""
+      } (เพื่อใช้ยื่นแสดงรายได้ประจำปี)`,
       90,
       92
     );
 
     if (user.social_security == "haveSocial_Security") {
       doc.text(
-        `มีบัตรประกันสังคม โรงพยาบาล: ${user.social_security_number}`,
+        `มีบัตรประกันสังคม โรงพยาบาล: ${user.social_security_number || ""}`,
         12,
         98
       );
@@ -315,32 +361,66 @@ export default function Admin() {
       textPersonalDetailsY - 3
     );
 
-    doc.text(`ชื่อ: ${user.names}`, 12, 112);
+    doc.text(`ชื่อ: ${user.names || ""}`, 12, 112);
 
-    doc.text(`สัญชาติ: ${user.nationality}`, 12, 118);
-    doc.text(`เชื้อชาติ: ${user.ethnicity}`, 50, 118);
-    doc.text(`ศาสนา: ${user.religion}`, 100, 118);
+    doc.text(`สัญชาติ: ${user.nationality || ""}`, 12, 118);
+    doc.text(`เชื้อชาติ: ${user.ethnicity || ""}`, 50, 118);
+    doc.text(`ศาสนา: ${user.religion || ""}`, 100, 118);
 
-    doc.text(`เกิดวันที่: ${formatDate(user.birthdate)}`, 12, 126);
-    doc.text(`อายุ: ${user.age} ปี`, 70, 126);
+    doc.text(`เกิดวันที่: ${formatDate(user.birthdate || "")}`, 12, 126);
+    doc.text(`อายุ: ${user.age || ""} ปี`, 70, 126);
 
-    doc.text(`สถานที่เกิด: ${user.place_of_birth}`, 12, 133);
+    doc.text(`สถานที่เกิด: ${user.place_of_birth || ""}`, 12, 133);
 
-    doc.text(`ที่อยู่(ตามบัตรประชาชน) เลขที่: ${user.addressForNumberID.addressNumber}`, 12, 140);
-    doc.text(`หมู่ที่: ${user.addressForNumberID.addressVillage}`, 80, 140);
-    doc.text(`ตรอกซอย: ${user.addressForNumberID.addressAlley}`, 120, 140);
-    doc.text(`ถนน: ${user.addressForNumberID.addressRoad}`, 160, 140);
+    doc.text(
+      `ที่อยู่(ตามบัตรประชาชน) เลขที่: ${
+        user.addressForNumberID?.addressNumber ?? ""
+      }`,
+      12,
+      140
+    );
+    doc.text(
+      `หมู่ที่: ${user.addressForNumberID?.addressVillage || ""}`,
+      80,
+      140
+    );
+    doc.text(
+      `ตรอกซอย: ${user.addressForNumberID?.addressAlley || ""}`,
+      120,
+      140
+    );
+    doc.text(`ถนน: ${user.addressForNumberID?.addressRoad || ""}`, 160, 140);
 
-    doc.text(`ตำบล/แขวง: ${user.addressForNumberID.addressSubdistrict}`, 12, 147);
-    doc.text(`อำเภอ/เขต: ${user.addressForNumberID.addressDistrict}`, 80, 147);
+    doc.text(
+      `ตำบล/แขวง: ${user.addressForNumberID?.addressSubdistrict || ""}`,
+      12,
+      147
+    );
+    doc.text(
+      `อำเภอ/เขต: ${user.addressForNumberID?.addressDistrict || ""}`,
+      80,
+      147
+    );
 
-    doc.text(`จังหวัด: ${user.addressForNumberID.addressProvince}`, 12, 154);
-    doc.text(`รหัสไปรณีย์: ${user.addressForNumberID.addressPostalNumber}`, 80, 154);
-    doc.text(`โทรศัพท์: ${user.addressForNumberID.phones}`, 120, 154);
+    doc.text(
+      `จังหวัด: ${user.addressForNumberID?.addressProvince || ""}`,
+      12,
+      154
+    );
+    doc.text(
+      `รหัสไปรณีย์: ${user.addressForNumberID?.addressPostalNumber || ""}`,
+      80,
+      154
+    );
+    doc.text(`โทรศัพท์: ${user.addressForNumberID?.phones || ""}`, 120, 154);
 
-    doc.text(`บัตรประชาชนเลขที่: ${user.cardnumber}`, 12, 161);
-    doc.text(`ออกให้ ญ ที่ว่าการเขต: ${user.country}`, 80, 161);
-    doc.text(`จังหวัด: ${user.addressForNumberID.addressProvince}`, 120, 161);
+    doc.text(`บัตรประชาชนเลขที่: ${user.cardnumber || ""}`, 12, 161);
+    doc.text(`ออกให้ ญ ที่ว่าการเขต: ${user.country || ""}`, 80, 161);
+    doc.text(
+      `จังหวัด: ${user.addressForNumberID?.addressProvince || ""}`,
+      120,
+      161
+    );
 
     // const addressMappings = {
     //   "เป็นเจ้าของ": "myself",
@@ -351,56 +431,88 @@ export default function Admin() {
     // };
 
     const addressMappings = {
-      "myself": "เป็นเจ้าของ",
+      myself: "เป็นเจ้าของ",
       "living with parents": "อยู่กับพ่อแม่",
       "living with relatives": "อยู่กับญาติ",
       "house for rent": "บ้านเช่า",
-      "หอพัก": "dormitory",
+      หอพัก: "dormitory",
     };
     if (user.address) {
       // Parse the JSON string into an array
-      const addressArray = JSON.parse(user.address);
+      const addressArray = JSON.parse(user.address || "");
 
       // Map each value using the addressMappings object
-      const mappedAddresses = addressArray.map(item => addressMappings[item] || item);
+      const mappedAddresses = addressArray.map(
+        (item) => addressMappings[item] || item
+      );
 
       // Join the mapped values into a single string
       const addressString = mappedAddresses.join(" / ");
 
       // Add the text to the PDF
-      doc.text(`ที่อยู่ปัจจุบัน(ที่สามารถติดต่อได้): ${addressString}`, 12, 168);
+      doc.text(
+        `ที่อยู่ปัจจุบัน(ที่สามารถติดต่อได้): ${addressString}`,
+        12,
+        168
+      );
     }
 
-    doc.text(`เลขที่: ${user.addressForContact.addressContactNumber}`, 12, 175);
-    doc.text(`หมู่ที่: ${user.addressForContact.addressContactVillage}`, 80, 175);
-    doc.text(`ตรอกซอย: ${user.addressForContact.addressContactAlley}`, 120, 175);
-    doc.text(`ถนน: ${user.addressForContact.addressContactRoad}`, 160, 175);
+    doc.text(
+      `เลขที่: ${user.addressForContact?.addressContactNumber || ""}`,
+      12,
+      175
+    );
+    doc.text(
+      `หมู่ที่: ${user.addressForContact?.addressContactVillage || ""}`,
+      80,
+      175
+    );
+    doc.text(
+      `ตรอกซอย: ${user.addressForContact?.addressContactAlley || ""}`,
+      120,
+      175
+    );
+    doc.text(
+      `ถนน: ${user.addressForContact?.addressContactRoad || ""}`,
+      160,
+      175
+    );
 
-    doc.text(`ตำบล/แขวง: ${user.addressForContact.addressContactSubdistrict}`, 12, 182);
-    doc.text(`อำเภอ/เขต: ${user.addressForContact.addressContactDistrict}`, 80, 182);
-    doc.text(`จังหวัด: ${user.addressForContact.addressContactProvince}`, 120, 182);
+    doc.text(
+      `ตำบล/แขวง: ${user.addressForContact?.addressContactSubdistrict || ""}`,
+      12,
+      182
+    );
+    doc.text(
+      `อำเภอ/เขต: ${user.addressForContact?.addressContactDistrict || ""}`,
+      80,
+      182
+    );
+    doc.text(
+      `จังหวัด: ${user.addressForContact?.addressContactProvince || ""}`,
+      120,
+      182
+    );
 
-    doc.text(`รหัสไปรณีย์: ${user.addressForContact.addressContactPostalNumber}`, 12, 189);
+    doc.text(
+      `รหัสไปรณีย์: ${
+        user.addressForContact?.addressContactPostalNumber || ""
+      }`,
+      12,
+      189
+    );
     doc.text(`โทรศัพท์บ้านพัก: ${user.HomePhone || ""}`, 80, 189);
 
     doc.text(`โทรศัพท์มือถือ: ${user.phones || ""}`, 12, 196);
     doc.text(`โทรศัพท์ที่โทรติดต่อได้: ${user.HomePhone || ""}`, 80, 196);
 
-
-
     // สถานะครอบครัว
     const textfamilyStatus = "สถานะครอบครัว";
     const textfamilyStatusWidth = doc.getTextWidth(textfamilyStatus);
-    const textfamilyStatusX =
-      rectX + (rectWidth - textfamilyStatusWidth) / 2;
-    const textfamilyStatusY =
-      196 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+    const textfamilyStatusX = rectX + (rectWidth - textfamilyStatusWidth) / 2;
+    const textfamilyStatusY = 196 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
 
-    doc.text(
-      textPersonalDetails,
-      textfamilyStatusX,
-      textfamilyStatusY - 2
-    );
+    doc.text(textPersonalDetails, textfamilyStatusX, textfamilyStatusY - 2);
 
     const familyStatusMappings = {
       single: "โสด",
@@ -411,7 +523,8 @@ export default function Admin() {
       separated: "แยกกันอยู่",
     };
 
-    const userfamilyStatus = familyStatusMappings[user.familyStatus] || user.familyStatus;
+    const userfamilyStatus =
+      familyStatusMappings[user.familyStatus] || user.familyStatus;
 
     doc.text(`สถานะ: ${userfamilyStatus || ""}`, 12, 210);
 
@@ -427,16 +540,22 @@ export default function Admin() {
       registered: "มี",
       notRegistered: "ไม่มี",
     };
-    const usermarriageRegistration = marriageRegistrationMappings[user.marriageRegistration] || user.marriageRegistration;
+    const usermarriageRegistration =
+      marriageRegistrationMappings[user.marriageRegistration] ||
+      user.marriageRegistration;
     doc.text(`ทะเบียนสมรส: ${usermarriageRegistration || ""}`, 120, 231);
 
     doc.text(`จำนวนบุตร: ${user.numChildren || ""} คน`, 12, 238);
     doc.text(`กำลังศึกษา: ${user.numChildrenStudying || ""} คน`, 80, 238);
 
-    doc.text(`บุตรที่อายุตาำกว่า 6 ปี มีจำนวน: ${user.numChildrenUnder6 || ""} คน`, 12, 245);
+    doc.text(
+      `บุตรที่อายุตาำกว่า 6 ปี มีจำนวน: ${user.numChildrenUnder6 || ""} คน`,
+      12,
+      245
+    );
 
     const uniqueIds = new Set();
-    const uniqueEmployees = user.employees.filter(employee => {
+    const uniqueEmployees = (user.employees || []).filter((employee) => {
       if (!uniqueIds.has(employee.id)) {
         uniqueIds.add(employee.id);
         return true;
@@ -444,28 +563,25 @@ export default function Admin() {
       return false;
     });
 
+    if (uniqueEmployees.length === 0) {
+      uniqueEmployees.push({ id: "", name: "" });
+    }
+
     let yOffset = 245; // Starting Y position
     let xOffset = 80;
     doc.text(`เกิด:`, xOffset, yOffset);
-    uniqueEmployees.forEach(employee => {
+    uniqueEmployees.forEach((employee) => {
       doc.text(`${employee.name} ||`, xOffset + 5, yOffset);
       xOffset += 17; // Adjust the Y position for the next text
     });
 
-
     // บิดา-มารดา
     const textFaNMa = "บิดา-มารดา";
     const textFaNMaWidth = doc.getTextWidth(textFaNMa);
-    const textFaNMaX =
-      rectX + (rectWidth - textFaNMaWidth) / 2;
-    const textFaNMaY =
-      245 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+    const textFaNMaX = rectX + (rectWidth - textFaNMaWidth) / 2;
+    const textFaNMaY = 245 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
 
-    doc.text(
-      textPersonalDetails,
-      textFaNMaX,
-      textFaNMaY - 2
-    );
+    doc.text(textPersonalDetails, textFaNMaX, textFaNMaY - 2);
 
     doc.text(`บิดา: ${user.fatherName || ""}`, 12, 259);
     doc.text(`อายุ: ${user.fatherAge || ""}ปี`, 80, 259);
@@ -475,10 +591,17 @@ export default function Admin() {
     doc.text(`อายุ: ${user.motherAge || ""} ปี`, 80, 266);
     doc.text(`อาชีพ: ${user.motherJob || ""}`, 120, 266);
 
-    doc.text(`หมายเหตุ: 1.ข้อมูลส่วนตัวของผู้สมัครทางบริษัทฯ ไม่ได้นำมาประกอบพิจารณฯาในการคัดเลือกผู้สมัครเพื่อรับเข้าทำงานแต่เป็นข้อมูลแนบประวัติพนักงานเท่านั้น`, 12, 273);
+    doc.text(
+      `หมายเหตุ: 1.ข้อมูลส่วนตัวของผู้สมัครทางบริษัทฯ ไม่ได้นำมาประกอบพิจารณฯาในการคัดเลือกผู้สมัครเพื่อรับเข้าทำงานแต่เป็นข้อมูลแนบประวัติพนักงานเท่านั้น`,
+      12,
+      273
+    );
 
-    doc.text(`              2.เอกสารฉบับนี้ได้รับการคุ้มครองตาม พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562`, 12, 280);
-
+    doc.text(
+      `              2.เอกสารฉบับนี้ได้รับการคุ้มครองตาม พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562`,
+      12,
+      280
+    );
 
     doc.addPage();
     // ประวัติการศึกษา
@@ -506,26 +629,18 @@ export default function Admin() {
       doc.rect(10 + 48.75 * i, 17, 48.75, 7 * 6);
     }
 
-
-
     const texteducationData = "ประวัติการศึกษา";
     const texteducationDataWidth = doc.getTextWidth(texteducationData);
-    const texteducationDataX =
-      rectX + (rectWidth - texteducationDataWidth) / 2;
-    const texteducationDataY =
-      7 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+    const texteducationDataX = rectX + (rectWidth - texteducationDataWidth) / 2;
+    const texteducationDataY = 7 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
 
-    doc.text(
-      texteducationData,
-      texteducationDataX,
-      texteducationDataY - 1
-    );
+    doc.text(texteducationData, texteducationDataX, texteducationDataY - 1);
 
     const textEducationData = [
       "วุฒิการศึกษา",
       "ชื่อสถานศึกษา",
       "ที่ตั้ง",
-      "ระยะเวลาที่ศึกษา(พ.ศ.) ตั้งแต่เริ่ม จนจบ"
+      "ระยะเวลาที่ศึกษา(พ.ศ.) ตั้งแต่เริ่ม จนจบ",
     ];
 
     let y = 22; // Starting Y position for the text
@@ -552,43 +667,344 @@ export default function Admin() {
       doc.text(text, x, yPosition);
     });
 
-
-    const textWorkedData = "ประวัติการทำงาน";
-    const textWorkedDataWidth = doc.getTextWidth(textWorkedData);
-    const textWorkedDataX =
-      rectX + (rectWidth - textWorkedDataWidth) / 2;
-    const textWorkedDataY =
-      56 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
-
-    doc.text(
-      textWorkedData,
-      textWorkedDataX,
-      textWorkedDataY - 1
-    );
-
-    for (let i = 0; i <= 4; i++) {
-      if (i == 0) {
+    for (let i = 0; i <= 5; i++) {
+      if (i == 1) {
         doc.setFillColor(255, 255, 0); // Yellow color
 
-        doc.rect(10, 56 + 7 * i, 195, 7, "FD");
+        doc.rect(10, 59 + 7 * i, 195, 7, "FD");
       } else {
         doc.rect(10, 59 + 7 * i, 195, 7);
       }
     }
 
-    doc.text(`หมายเหตุ: 1.ข้อมูลส่วนตัวของผู้สมัครทางบริษัทฯ ไม่ได้นำมาประกอบพิจารณฯาในการคัดเลือกผู้สมัครเพื่อรับเข้าทำงานแต่เป็นข้อมูลแนบประวัติพนักงานเท่านั้น`, 12, 273);
+    const textWorkedData = "ประวัติการทำงาน";
+    const textWorkedDataWidth = doc.getTextWidth(textWorkedData);
+    const textWorkedDataX = rectX + (rectWidth - textWorkedDataWidth) / 2;
+    const textWorkedDataY = 56 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
 
-    doc.text(`              2.เอกสารฉบับนี้ได้รับการคุ้มครองตาม พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562`, 12, 280);
+    doc.text(textWorkedData, textWorkedDataX, textWorkedDataY - 1);
 
+    // doc.setFillColor(255, 255, 0); // Yellow color
+    // doc.rect(60, 66, 90, 14, "F"); // "F" for fill
 
+    for (let i = 0; i <= 2; i++) {
+      // if (i == 1) {
+      doc.setFillColor(255, 255, 0); // Yellow color
+
+      doc.rect(10 + 20 * i, 73, 20, 7, "FD");
+      // } else {
+      // doc.rect(60 * i, 66, 30, 14);
+      // }
+    }
+
+    for (let i = 0; i <= 2; i++) {
+      // if (i == 1) {
+      // doc.setFillColor(255, 255, 0); // Yellow color
+
+      doc.rect(10 + 20 * i, 80, 20, 21);
+      // } else {
+      // doc.rect(60 * i, 66, 30, 14);
+      // }
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      // if (i == 1) {
+      doc.setFillColor(255, 255, 0); // Yellow color
+
+      doc.rect(40 + 30 * i, 66, 30, 14, "FD");
+      // } else {
+      // doc.rect(60 * i, 66, 30, 14);
+      // }
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      // if (i == 1) {
+      doc.setFillColor(255, 255, 0); // Yellow color
+
+      doc.rect(40 + 30 * i, 80, 30, 21);
+      // } else {
+      // doc.rect(60 * i, 66, 30, 14);
+      // }
+    }
+
+    doc.setFillColor(255, 255, 100); // Yellow color
+    doc.rect(160, 66, 45, 14, "FD");
+
+    doc.text(`ระยะเวลาการทำงาน`, 25, 71);
+
+    const textYearData = ["รวม(ปี)", "จากพ.ศ.", "ถึงพ.ศ."];
+
+    let yYear = 79; // Starting Y position for the text
+    const xYearStart = 12; // Starting X position for the rectangles
+
+    textYearData.forEach((text, index) => {
+      const textWidth = doc.getTextWidth(text);
+      const x = xYearStart + 20 * index + (20 - textWidth) / 2;
+      doc.text(text, x, yYear);
+    });
+
+    const textHistolyWorkData = [
+      "ชื่อสถานที่ทำงาน\nและที่อยู่",
+      "ตำแหน่งหน้าที่\nที่รับผิดชอบโดยสังเขป",
+      "เงินเดือน\nครั้งสุดท้าย",
+      "เหตุผลที่ออก\nจากงาน",
+    ];
+
+    let yeducationDataset = 30;
+
+    user.educationData.forEach((education, index) => {
+      // doc.text(`Degree: ${education.degree || ""}`, xeducationDataset, yeducationDataset);
+      // yeducationDataset += 5;
+      let xeducationDataset = 60;
+
+      doc.text(
+        `${education.institution || ""}`,
+        xeducationDataset,
+        yeducationDataset
+      );
+      xeducationDataset += 48.75;
+      doc.text(
+        `${education.location || ""}`,
+        xeducationDataset,
+        yeducationDataset
+      );
+      xeducationDataset += 48.75;
+      doc.text(
+        `${education.duration || ""}`,
+        xeducationDataset,
+        yeducationDataset
+      );
+      xeducationDataset += 48.75; // Add extra space between different education records
+      yeducationDataset += 7; // Add extra space between different education records
+    });
+
+    let yWorkHistoryset = 85;
+
+    user.workHistory.forEach((education, index) => {
+      // doc.text(`Degree: ${education.degree || ""}`, xeducationDataset, yeducationDataset);
+      // yeducationDataset += 5;
+      let xeducationDataset = 12;
+
+      doc.text(
+        `${education.duration || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 20;
+      doc.text(
+        `${education.durationStart || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 20;
+      doc.text(
+        `${education.durationEnd || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 20;
+      doc.text(
+        `${education.workplace || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 30;
+      doc.text(
+        `${education.position || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 30;
+      doc.text(
+        `${education.lastSalary || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 30;
+      doc.text(
+        `${education.reasonForLeaving || ""}`,
+        xeducationDataset,
+        yWorkHistoryset
+      );
+      xeducationDataset += 30; // Add extra space between different education records
+      yWorkHistoryset += 7; // Add extra space between different education records
+    });
+
+    let yHistolyWork = 72; // Starting Y position for the text
+    const xHistolyWorkStart = 78; // Starting X position for the rectangles
+
+    textHistolyWorkData.forEach((text, index) => {
+      const textWidth = doc.getTextWidth(text);
+      const x = xHistolyWorkStart + 30 * index + (30 - textWidth) / 2;
+      doc.text(text, x, yHistolyWork);
+    });
+
+    // สมุดบัญชีธนาคาร
+    for (let i = 0; i <= 13; i++) {
+      if (i == 0 || i == 3 || i == 9) {
+        doc.setFillColor(255, 255, 0); // Yellow color
+
+        doc.rect(10, 101 + 7 * i, 195, 7, "FD");
+      } else {
+        doc.rect(10, 101 + 7 * i, 195, 7);
+      }
+    }
+
+    const textAccountPassbookData = "สมุดบัญชีธนาคาร";
+    const textAccountPassbookDataWidth = doc.getTextWidth(
+      textAccountPassbookData
+    );
+    const textAccountPassbookDataX =
+      rectX + (rectWidth - textAccountPassbookDataWidth) / 2;
+    const textAccountPassbookDataY =
+      99 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+
+    doc.text(
+      textAccountPassbookData,
+      textAccountPassbookDataX,
+      textAccountPassbookDataY - 1
+    );
+    const accountBook = JSON.parse(user.accountBook || "[]");
+
+    if (accountBook.includes("haveAccountBook")) {
+      doc.text("มี", 12, 113);
+      doc.text(`ชื่อธนาคาร: ${user.bankname || ""}`, 12, 120);
+      doc.text(`สาขา: ${user.bankBranch || ""}`, 80, 120);
+    } else {
+      doc.text("ไม่มี", 12, 113);
+    }
+
+    const textEmergencyData =
+      "ในกรณีเกิดอุบัติเหตุหรือเรื่องฉุกเฉิน บุคลที่ท่านต้องการให้ติดต่อด้วยคือ";
+    const textEmergencyDataWidth = doc.getTextWidth(textEmergencyData);
+    const textEmergencyDataX = rectX + (rectWidth - textEmergencyDataWidth) / 2;
+    const textEmergencyDataY = 119 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+
+    doc.text(textEmergencyData, textEmergencyDataX, textEmergencyDataY - 1);
+
+    doc.text(`ชื่อ: ${user.emergencyName || ""}`, 12, 134);
+    doc.text(`ความเกี่ยวข้อง: ${user.relevant || ""}`, 80, 134);
+
+    doc.text(`เบอร์โทรศัพท์ที่ติดต่อได้: ${user.parentContact || ""}`, 12, 141);
+
+    doc.text(`เบอร์โทรศัพท์พ่อ/แม่: ${user.emergencyContact || ""}`, 12, 148);
+
+    doc.text(`เบอร์โทรศัพท์พี่/น้อง: ${user.Contact || ""}`, 12, 155);
+
+    doc.text(`เบอร์โทรศัพท์ญาติ: ${user.Contactt || ""}`, 12, 162);
+
+    const textabilityData = "สามารถพิเศษ";
+    const textabilityDataWidth = doc.getTextWidth(textabilityData);
+    const textabilityDataX = rectX + (rectWidth - textabilityDataWidth) / 2;
+    const textabilityDataY = 161 + rectHeight / 2 + doc.getFontSize() / 2 - 1; // Adjusting Y to center the text vertically
+
+    doc.text(textabilityData, textabilityDataX, textabilityDataY - 1);
+
+    const rideBicycle = JSON.parse(user.rideBicycle || "[]");
+    const ridingMotorcycle = JSON.parse(user.ridingMotorcycle || "[]");
+    const driverLicenseType = JSON.parse(user.driverLicenseType || "[]");
+
+    console.log("rideBicycle", rideBicycle);
+    console.log("ridingMotorcycle", ridingMotorcycle);
+
+    // doc.text(`ขับขี่จักรยานยนต์: ${user.emergencyName || ""}`, 12, 176);
+    if (
+      rideBicycle.includes("canRideBicycle") &&
+      ridingMotorcycle.includes("canRideMotorcycle")
+    ) {
+      doc.text(`ขับขี่จักรยานยนต์: ได้`, 12, 176);
+      doc.text(`ขับขี่รถยนต์: ได้`, 80, 176);
+      doc.text(`ใบอนุญาตขับขี่เลขที่ : ${user.licenseNumber || ""}`, 120, 176);
+
+      if (driverLicenseType.includes("temporaryLicense")) {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ชั่วคราว`, 12, 183);
+        doc.text(`วันหมดอายุ: ${user.expiryDate || ""}`, 80, 183);
+      } else {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ตลอดชีพ`, 12, 183);
+      }
+    } else if (rideBicycle.includes("canRideBicycle")) {
+      doc.text(`ขับขี่จักรยานยนต์: ได้`, 12, 176);
+      doc.text(`ขับขี่รถยนต์: ไม่ได้`, 80, 176);
+      doc.text(`ใบอนุญาตขับขี่เลขที่ : ${user.licenseNumber || ""}`, 120, 176);
+
+      if (driverLicenseType.includes("temporaryLicense")) {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ชั่วคราว`, 12, 183);
+        doc.text(`วันหมดอายุ: ${user.expiryDate || ""}`, 80, 183);
+      } else {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ตลอดชีพ`, 12, 183);
+      }
+    } else if (ridingMotorcycle.includes("canRideMotorcycle")) {
+      doc.text(`ขับขี่จักรยานยนต์: ไม่ได้`, 12, 176);
+      doc.text(`ขับขี่รถยนต์: ได้`, 80, 176);
+      doc.text(`ใบอนุญาตขับขี่เลขที่ : ${user.licenseNumber || ""}`, 120, 176);
+
+      if (driverLicenseType.includes("temporaryLicense")) {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ชั่วคราว`, 12, 183);
+        doc.text(`วันหมดอายุ: ${user.expiryDate || ""}`, 80, 183);
+      } else {
+        doc.text(`ใบอนุญาตขับขี่ประเภท: ตลอดชีพ`, 12, 183);
+      }
+    } else {
+      doc.text(`ขับขี่จักรยานยนต์: ไม่ได้`, 12, 176);
+      doc.text(`ขับขี่รถยนต์: ไม่ได้`, 80, 176);
+    }
+    const canWorkAnyWhere = JSON.parse(user.canWorkAnyWhere || "[]");
+
+    if (canWorkAnyWhere.includes("cannotTravel")) {
+      doc.text(
+        `สามารถและพร้อมที่จะเดินทางไปปฏิบัติสถานที่ต่างๆ ได้หรือไม่ เพราะเหตุใด: ไม่ได้`,
+        12,
+        190
+      );
+    } else {
+      doc.text(
+        `สามารถและพร้อมที่จะเดินทางไปปฏิบัติสถานที่ต่างๆ ได้หรือไม่ เพราะเหตุใด: ได้`,
+        12,
+        190
+      );
+    }
+
+    doc.text(`${user.reason || ""}`, 12, 197);
+
+    doc.text(
+      `   ข้าพเจ้าขอรับรองว่า ข้อความทั้งหมดนี้เป็นความจริงทุกประการ หากข้อความดังกล่าวผิดไปจากความจริง ข้าพเจ้ายินดี`,
+      12,
+      204
+    );
+    doc.text(`ห้าบริษัทฯพิจรณาตามกฎระเบียบข้อบังคับบริษัทฯทุกประการ`, 12, 211);
+
+    doc.text(
+      `ลงชื่อ............................................................................................ผู้สมัคร`,
+      12,
+      225
+    );
+    doc.text(
+      `ลงชื่อ............................................................................................ผู้ปกครองผู้ให้ความยินยิม`,
+      100,
+      225
+    );
+
+    doc.text(`วันที่........../........../..........`, 30, 239);
+
+    doc.text(`วันที่........../........../..........`, 120, 239);
+
+    doc.text(
+      `หมายเหตุ: 1.ข้อมูลส่วนตัวของผู้สมัครทางบริษัทฯ ไม่ได้นำมาประกอบพิจารณฯาในการคัดเลือกผู้สมัครเพื่อรับเข้าทำงานแต่เป็นข้อมูลแนบประวัติพนักงานเท่านั้น`,
+      12,
+      273
+    );
+
+    doc.text(
+      `              2.เอกสารฉบับนี้ได้รับการคุ้มครองตาม พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562`,
+      12,
+      280
+    );
 
     // doc.text(`เกิด: ${user.numChildrenStudying || ""} คน`, xOffset, 245);
     // doc.text(`อาศัยกับ: ${user.address}`, 12, 147);
 
     // doc.text(`โทรศัพท์มือถือ: ${user.phones}`, 12, 147);
     // doc.text(`โทรศัพท์ที่สามารถติดต่อได้: ${user.contactPhone}`, 12, 147);
-
-
 
     // Add the user's details to the PDF
     // doc.text("User Details", 10, 10);
@@ -610,6 +1026,8 @@ export default function Admin() {
         รายชื่อผู้สมัครงาน
       </h1>
       <div>
+        <button onClick={() => generatePdf(user._id)}>ออกใบ</button>
+
         <table>
           <thead>
             <tr>
@@ -641,7 +1059,18 @@ export default function Admin() {
                     เพิ่มเติม
                   </button>
                 </td>
-                <td>{user.status}</td>
+                <td>
+                  {/* {user.status} */}
+                  <select
+                value={userStatuses[user._id]}
+                onChange={(e) => handleStatusChange(user._id, e.target.value)}
+              >
+                <option value="สมัครใหม่">สมัครใหม่</option>
+                <option value="กำลังพิจรณา">กำลังพิจรณา</option>
+                <option value="ผ่าน">ผ่าน</option>
+                {/* Add other status options as needed */}
+              </select>
+                  </td>
                 <td>
                   {/* <button>ออกใบ</button> */}
                   <button onClick={() => generatePdf(user._id)}>ออกใบ</button>

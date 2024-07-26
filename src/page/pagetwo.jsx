@@ -109,6 +109,9 @@ function PageTwO() {
     window.open(filePath, "_blank");
   };
 
+
+  const parsedAccountBook = JSON.parse(user.accountBook || '[]');
+
   return (
     <div>
       <div
@@ -347,7 +350,8 @@ function PageTwO() {
         <p>
           <strong>สมุดบัญชีธนาคาร</strong>
         </p>
-        {user.accountBook == "haveAccountBook" ? (
+        
+        {parsedAccountBook.includes("haveAccountBook") ? (
           <div
             style={{
               display: "grid",
